@@ -29,11 +29,8 @@ create table votes (
 
 create index votes_question_id_idx on votes (question_id);
 
--- ── full-text search index (Feature 5) ───────────────────────────────────────
--- GIN = Generalized INverted index: the word → documents map behind search.
 create index questions_fts_idx on questions using gin (to_tsvector('english', body));
 
--- ── seed (~25 questions, spaced out in time so ordering is stable) ───────────
 insert into questions (body, author, created_at)
 select body, author, now() - (n || ' minutes')::interval
 from (
