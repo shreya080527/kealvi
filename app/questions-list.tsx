@@ -49,9 +49,14 @@ export default function QuestionsList({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ body: draft }),
     });
-    const created = await res.json();
+ const created = await res.json();
 
-    setQuestions((qs) => [{ ...created, votes: 0 }, ...qs]);
+if (!res.ok) {
+  alert(created.error);
+  return;
+}
+
+setQuestions((qs) => [{ ...created, votes: 0 }, ...qs]);
     setDraft("");
   }
 
