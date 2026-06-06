@@ -83,8 +83,8 @@ export default function PollCard({
       fetch(`/api/vote?pollId=${poll.id}&voterId=${userId}`),
       fetch(`/api/predictions?pollId=${poll.id}&userId=${userId}`),
     ]);
-    let voteData = {};
-let predData = {};
+  let voteData: any = {};
+let predData: any = {};
 
 try {
   voteData = await voteRes.json();
