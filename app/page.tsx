@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
-import UserPollCard from "./components/UserPollCard";
 import QuestionsList from "./questions-list";
+import UserPollCard from "./components/UserPollCard";
 import ReputationCard from "./components/ReputationCard";
 import CreatePollForm from "./components/CreatePollForm";
 
@@ -15,38 +15,48 @@ function getUserId(): string {
   return id;
 }
 
+type Tab = "polls" | "questions";
+
 export default function Home() {
   const [polls, setPolls] = useState<any[]>([]);
   const [questions, setQuestions] = useState<any[]>([]);
   const [hasMore, setHasMore] = useState(false);
-  const [userId, setUserId] = useState<string>("anon");
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [userId, setUserId] = useState("anon");
+  const [lastRefresh, setLastRefresh] = useState(new Date());
   const [loadingPolls, setLoadingPolls] = useState(true);
+  const [tab, setTab] = useState<Tab>("polls");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-const [mounted, setMounted] = useState(false);
-
-useEffect(() => {
+  const [mounted, setMounted] = useState(false);
+  const [sortType, setSortType] = useState<
+  "trending" | "new" | "top"
+>("trending");
+ useEffect(() => {
+  setUserId(getUserId());
   setMounted(true);
 }, []);
-  useEffect(() => {
-    setUserId(getUserId());
-  }, []);
 
- const loadPolls = useCallback(async () => {
+const loadPolls = useCallback(async () => {
   try {
-    const res = await fetch("/api/polls");
+const res = await fetch("/api/polls", {
+  cache: "no-store",
+});
 
-    if (!res.ok) return;
+    if (!res.ok) {
+      console.error("Poll API error", res.status);
+      return;
+    }
 
     const data = await res.json();
 
     setPolls(Array.isArray(data) ? data : []);
     setLastRefresh(new Date());
-    setLoadingPolls(false);
   } catch (err) {
-    console.error("Fetch failed:", err);
+    console.error("loadPolls failed", err);
+  } finally {
+    setLoadingPolls(false);
   }
 }, []);
+
   const loadQuestions = useCallback(async () => {
     const res = await fetch("/api/questions");
     const data = await res.json();
@@ -58,87 +68,247 @@ useEffect(() => {
   loadPolls();
   loadQuestions();
 
-  const id = setInterval(() => {
-    loadPolls();
-  }, 10000);
-
-  intervalRef.current = id;
-
-  return () => clearInterval(id);
+  return () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+  };
 }, [loadPolls, loadQuestions]);
-  return (
-    <main style={{ maxWidth: "700px", margin: "40px auto", padding: "20px" }}>
-      <style>{`
-        @keyframes fadeUp {
-          0% { opacity: 1; transform: translateY(0); }
-          80% { opacity: 1; transform: translateY(-8px); }
-          100% { opacity: 0; transform: translateY(-16px); }
-        }
-      `}</style>
 
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
-        <h1 style={{ margin: 0, fontSize: "28px", fontWeight: "800", color: "#0f172a" }}>
-          Live Q&amp;A
-        </h1>
-        <span style={{ fontSize: "11px", color: "#94a3b8" }}>
-          🔄 auto-refresh 10s · {mounted ? lastRefresh.toLocaleTimeString() : ""}
+ const totalVotes = polls.reduce(
+  (s, p) =>
+    s +
+    (p.poll_options?.reduce(
+      (ss: number, o: any) => ss + (o.vote_count ?? 0),
+      0
+    ) ?? 0),
+  0
+);
+
+const topPolls = [...polls]
+  .sort((a, b) => {
+    const aVotes =
+      a.poll_options?.reduce(
+        (s: number, o: any) => s + (o.vote_count || 0),
+        0
+      ) || 0;
+
+    const bVotes =
+      b.poll_options?.reduce(
+        (s: number, o: any) => s + (o.vote_count || 0),
+        0
+      ) || 0;
+
+    return bVotes - aVotes;
+  })
+  .slice(0, 3);
+
+const displayedPolls = [...polls].sort((a, b) => {
+  const votesA =
+    a.poll_options?.reduce(
+      (s: number, o: any) => s + (o.vote_count || 0),
+      0
+    ) || 0;
+
+  const votesB =
+    b.poll_options?.reduce(
+      (s: number, o: any) => s + (o.vote_count || 0),
+      0
+    ) || 0;
+
+  if (sortType === "top") {
+    return votesB - votesA;
+  }
+
+  if (sortType === "new") {
+    return (
+      new Date(b.created_at).getTime() -
+      new Date(a.created_at).getTime()
+    );
+  }
+
+  return votesB - votesA;
+});
+  return (
+    <div className="kv-shell">
+      {/* ── TOPBAR ── */}
+      <header className="kv-topbar">
+        <div className="kv-logo">
+          <span className="kv-logo-dot" />
+          Kealvi
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className="kv-live-badge">
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--green)", display: "inline-block", boxShadow: "0 0 6px var(--green)" }} />
+     live · {mounted ? lastRefresh.toLocaleTimeString() : "--:--:--"}
+          </div>
+        </div>
+      </header>
+
+      {/* ── SIDEBAR ── */}
+      <aside className="kv-sidebar">
+        {userId !== "anon" && <ReputationCard userId={userId} compact />}
+
+        <div className="kv-nav-label">Navigate</div>
+
+        {(["polls", "questions"] as Tab[]).map((t) => (
+          <div
+            key={t}
+            className={`kv-nav-item ${tab === t ? "kv-nav-item--active" : ""}`}
+            onClick={() => setTab(t)}
+          >
+            <span>{t === "polls" ? "📊" : "❓"}</span>
+            <span style={{ textTransform: "capitalize" }}>{t}</span>
+            {t === "polls" && (
+              <span style={{ marginLeft: "auto", fontSize: "11px", color: "var(--text-3)", fontFamily: "var(--mono)" }}>
+                {polls.length}
+              </span>
+            )}
+          </div>
+        ))}
+
+        <div className="kv-nav-label" style={{ marginTop: "8px" }}>Stats</div>
+         <div
+  style={{
+    marginTop: "20px",
+    padding: "12px",
+    border: "1px solid var(--border)",
+    borderRadius: "12px",
+    background: "var(--surface)",
+  }}
+>
+  <div
+    style={{
+      fontWeight: "700",
+      marginBottom: "10px",
+      color: "gold",
+    }}
+  >
+    🏆 Top Polls
+  </div>
+
+  {topPolls.map((poll, index) => {
+    const votes =
+      poll.poll_options?.reduce(
+        (s: number, o: any) => s + (o.vote_count || 0),
+        0
+      ) || 0;
+
+    return (
+      <div
+        key={poll.id}
+        style={{
+          marginBottom: "8px",
+          fontSize: "12px",
+        }}
+      >
+        {index + 1}. {poll.question}
+        <br />
+        <span style={{ color: "#999" }}>
+          {votes} votes
         </span>
       </div>
-
-      {/* Reputation card */}
-      {userId !== "anon" && <ReputationCard userId={userId} />}
-
-      {/* ── POLLS SECTION ── */}
-      <div style={{ marginBottom: "32px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#1e293b" }}>
-            Polls
-          </h2>
-          <span style={{ fontSize: "13px", color: "#94a3b8" }}>
-            {polls.length} poll{polls.length !== 1 ? "s" : ""}
-          </span>
-        </div>
-
-        {/* Create Poll Form */}
-        {userId !== "anon" && (
-          <CreatePollForm userId={userId} onCreated={loadPolls} />
-        )}
-
-        {/* Poll list */}
-        {loadingPolls ? (
-          <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8", fontSize: "14px" }}>
-            Loading polls…
-          </div>
-        ) : polls.length === 0 ? (
-          <div style={{
-            textAlign: "center",
-            padding: "40px 20px",
-            border: "2px dashed #e2e8f0",
-            borderRadius: "16px",
-            color: "#94a3b8",
+    );
+  })}
+</div>
+        {[
+          { label: "Total Polls", val: polls.length, icon: "📊" },
+          { label: "Total Votes", val: totalVotes, icon: "🗳" },
+          { label: "Questions", val: questions.length, icon: "❓" },
+        ].map((s) => (
+          <div key={s.label} style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "8px 12px", borderRadius: "var(--r-md)",
+            background: "var(--surface)", border: "1px solid var(--border)",
+            marginBottom: "4px",
           }}>
-            <div style={{ fontSize: "40px", marginBottom: "12px" }}>📊</div>
-            <div style={{ fontWeight: "600", marginBottom: "6px" }}>No polls yet</div>
-            <div style={{ fontSize: "13px" }}>Be the first to create one!</div>
+            <span style={{ fontSize: "12px", color: "var(--text-2)", display: "flex", alignItems: "center", gap: "6px" }}>
+              {s.icon} {s.label}
+            </span>
+            <span style={{ fontFamily: "var(--mono)", fontSize: "13px", fontWeight: "700", color: "var(--text-1)" }}>
+              {s.val}
+            </span>
           </div>
-        ) : (
-          polls.map((poll) => (
-            <UserPollCard
-              key={poll.id}
-              poll={poll}
-              userId={userId}
-              onVoteChange={loadPolls}
-            />
-          ))
-        )}
-      </div>
+        ))}
+      </aside>
 
-      {/* ── QUESTIONS SECTION ── */}
-      <h2 style={{ fontSize: "20px", fontWeight: "800", color: "#1e293b", margin: "0 0 12px" }}>
-        Questions
-      </h2>
-      <QuestionsList initialQuestions={questions} initialHasMore={hasMore} />
-    </main>
+      {/* ── MAIN ── */}
+      <main className="kv-main">
+        {tab === "polls" && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+              <h1 style={{ fontSize: "22px", fontWeight: "700", color: "var(--text-1)", letterSpacing: "-0.02em" }}>
+                Polls
+              </h1>
+              <div
+  style={{
+    display: "flex",
+    gap: "8px",
+    marginTop: "10px",
+  }}
+>
+  <button
+    className="kv-btn"
+    onClick={() => setSortType("trending")}
+  >
+    🔥 Trending
+  </button>
+
+  <button
+    className="kv-btn"
+    onClick={() => setSortType("new")}
+  >
+    🆕 New
+  </button>
+
+  <button
+    className="kv-btn"
+    onClick={() => setSortType("top")}
+  >
+    🏆 Top
+  </button>
+</div>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <span className="kv-pill kv-pill--blue">{polls.length} active</span>
+                <span className="kv-pill kv-pill--slate">{totalVotes} votes</span>
+              </div>
+            </div>
+
+            {userId !== "anon" && (
+              <CreatePollForm userId={userId} onCreated={loadPolls} />
+            )}
+
+            {loadingPolls ? (
+              <div style={{ textAlign: "center", padding: "60px", color: "var(--text-3)", fontFamily: "var(--mono)", fontSize: "13px" }}>
+                loading polls…
+              </div>
+            ) : polls.length === 0 ? (
+              <div className="kv-empty">
+                <div style={{ fontSize: "40px", marginBottom: "12px" }}>📊</div>
+                <div style={{ fontWeight: "700", color: "var(--text-1)", marginBottom: "6px" }}>No polls yet</div>
+                <div style={{ fontSize: "13px", color: "var(--text-3)" }}>Create the first one above</div>
+              </div>
+            ) : (
+              <div className="kv-poll-grid">
+                {displayedPolls.map((poll) => (
+                  <UserPollCard key={poll.id} poll={poll} userId={userId} onVoteChange={loadPolls} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === "questions" && (
+          <>
+            <div style={{ marginBottom: "20px" }}>
+              <h1 style={{ fontSize: "22px", fontWeight: "700", color: "var(--text-1)", letterSpacing: "-0.02em" }}>
+                Questions
+              </h1>
+            </div>
+            <QuestionsList initialQuestions={questions} initialHasMore={hasMore} />
+          </>
+        )}
+      </main>
+    </div>
   );
 }
