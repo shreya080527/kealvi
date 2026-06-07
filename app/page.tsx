@@ -30,6 +30,7 @@ export default function Home() {
   const [sortType, setSortType] = useState<
   "trending" | "new" | "top"
 >("trending");
+const [showLanding, setShowLanding] = useState(true);
  useEffect(() => {
   setUserId(getUserId());
   setMounted(true);
@@ -129,6 +130,202 @@ const displayedPolls = [...polls].sort((a, b) => {
 
   return votesB - votesA;
 });
+if (showLanding) {
+ return (
+  <div
+    style={{
+      minHeight: "100vh",
+      background:
+        "linear-gradient(135deg,#fff7fb 0%,#fff1f7 40%,#ffe4ef 100%)",
+      position: "relative",
+      overflow: "hidden",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "40px",
+    }}
+  >
+    {/* Glow blobs */}
+    <div
+      style={{
+        position: "absolute",
+        width: "500px",
+        height: "500px",
+        borderRadius: "50%",
+        background: "rgba(236,72,153,.15)",
+        filter: "blur(120px)",
+        top: "-100px",
+        left: "-100px",
+      }}
+    />
+
+    <div
+      style={{
+        position: "absolute",
+        width: "400px",
+        height: "400px",
+        borderRadius: "50%",
+        background: "rgba(244,114,182,.15)",
+        filter: "blur(100px)",
+        bottom: "-100px",
+        right: "-100px",
+      }}
+    />
+
+    <div
+      style={{
+        maxWidth: "1200px",
+        width: "100%",
+      }}
+    >
+      {/* Navbar */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "80px",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "34px",
+            fontWeight: "800",
+            color: "#db2777",
+          }}
+        >
+          💬Kealvi
+        </h1>
+
+        <button
+          onClick={() => setShowLanding(false)}
+          style={{
+            padding: "12px 28px",
+            border: "none",
+            borderRadius: "12px",
+            background: "#ec4899",
+            color: "white",
+            fontWeight: "700",
+            cursor: "pointer",
+            boxShadow: "0 10px 30px rgba(236,72,153,.35)",
+          }}
+        >
+          Enter App →
+        </button>
+      </div>
+
+      {/* Hero */}
+      <div
+        style={{
+          textAlign: "center",
+          marginBottom: "80px",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "72px",
+            fontWeight: "900",
+            lineHeight: 1,
+            background:
+              "linear-gradient(90deg,#ec4899,#db2777,#be185d)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            marginBottom: "20px",
+          }}
+        >
+          Ask. Vote. Discover.
+        </div>
+
+        <p
+          style={{
+            fontSize: "22px",
+            color: "#64748b",
+            maxWidth: "800px",
+            margin: "0 auto",
+            lineHeight: "1.8",
+          }}
+        >
+          Join the Kealvi community. Ask questions,
+          create polls, vote on opinions and discover
+          what people think in real time.
+        </p>
+      </div>
+
+      {/* Features */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))",
+          gap: "24px",
+        }}
+      >
+        {[
+          {
+            icon: "📊",
+            title: "Polls",
+            desc: "Create engaging polls and collect opinions instantly",
+          },
+          {
+            icon: "❓",
+            title: "Questions",
+            desc: "Ask questions and learn from the community",
+          },
+          {
+            icon: "🔥",
+            title: "Trending",
+            desc: "See what's popular and discussed right now",
+          },
+          {
+            icon: "🏆",
+            title: "Reputation",
+            desc: "Earn points and build your profile",
+          },
+        ].map((item) => (
+          <div
+            key={item.title}
+            style={{
+              background: "white",
+              borderRadius: "24px",
+              padding: "30px",
+              boxShadow:
+                "0 15px 40px rgba(236,72,153,.08)",
+              transition: "0.3s",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "40px",
+                marginBottom: "16px",
+              }}
+            >
+              {item.icon}
+            </div>
+
+            <h3
+              style={{
+                fontSize: "24px",
+                color: "#831843",
+                marginBottom: "10px",
+              }}
+            >
+              {item.title}
+            </h3>
+
+            <p
+              style={{
+                color: "#64748b",
+                lineHeight: "1.8",
+              }}
+            >
+              {item.desc}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+}
   return (
     <div className="kv-shell">
       {/* ── TOPBAR ── */}
@@ -234,6 +431,7 @@ const displayedPolls = [...polls].sort((a, b) => {
 
       {/* ── MAIN ── */}
       <main className="kv-main">
+      
         {tab === "polls" && (
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
